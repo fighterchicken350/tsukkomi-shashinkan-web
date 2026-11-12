@@ -1601,7 +1601,7 @@ function devoice(s){return (s||'').split('').map(function(c){return DEV[c]||c}).
 function editDist(a,b){var m=a.length,n=b.length;if(Math.abs(m-n)>1)return 2;var d=[];for(var i=0;i<=m;i++){d[i]=[i]}for(var j=0;j<=n;j++)d[0][j]=j;for(i=1;i<=m;i++){for(j=1;j<=n;j++){d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1))}}return d[m][n]}
 /* 3文字以上のキーワードなら、1文字だけ違う聞き取りミスも許容して探す */
 function nearMatch(hay,needle){if(needle.length<3)return false;for(var i=0;i<=hay.length-needle.length;i++){if(editDist(hay.substr(i,needle.length),needle)<=1)return true}if(hay.length>needle.length){for(i=0;i<=hay.length-needle.length+1;i++){if(editDist(hay.substr(i,needle.length-1),needle)<=1||editDist(hay.substr(i,needle.length+1),needle)<=1)return true}}return false}
-function matchHot(text,sc){var n=norm(text),dn=devoice(n),list=[],fuzzy=false;sc.hot.forEach(function(h){var cnt=0,maxLen=0,exact=false,seen={};h.k.forEach(function(k){if(!k)return;var kk=devoice(norm(k));if(!kk||seen[kk])return;seen[kk]=1;if(dn.indexOf(kk)>=0){cnt++;if(kk.length>maxLen)maxLen=kk.length;exact=true}else if(nearMatch(dn,kk)){cnt++;if(kk.length>maxLen)maxLen=kk.length}});if(cnt>0){list.push({id:h.id,cnt:cnt,maxLen:maxLen,exact:exact});if(!h.k.some(function(k){return k&&n.indexOf(norm(k))>=0}))fuzzy=true}});list.sort(function(a,b){if(a.exact!==b.exact)return a.exact?-1:1;if(a.cnt!==b.cnt)return b.cnt-a.cnt;if(a.maxLen!==b.maxLen)return b.maxLen-a.maxLen;return 0});return {ids:list.map(function(x){return x.id}),fuzzy:fuzzy}}
+function matchHot(text,sc){var n=norm(text),dn=devoice(n),list=[];sc.hot.forEach(function(h){var cnt=0,maxLen=0,exact=false,seen={};h.k.forEach(function(k){if(!k)return;var kk=devoice(norm(k));if(!kk||seen[kk])return;seen[kk]=1;if(dn.indexOf(kk)>=0){cnt++;if(kk.length>maxLen)maxLen=kk.length;exact=true}else if(nearMatch(dn,kk)){cnt++;if(kk.length>maxLen)maxLen=kk.length}});if(cnt>0)list.push({id:h.id,cnt:cnt,maxLen:maxLen,exact:exact,h:h})});list.sort(function(a,b){if(a.exact!==b.exact)return a.exact?-1:1;if(a.cnt!==b.cnt)return b.cnt-a.cnt;if(a.maxLen!==b.maxLen)return b.maxLen-a.maxLen;return 0});var top=list[0];var fuzzy=false;if(top&&!top.h.k.some(function(k){return k&&n.indexOf(norm(k))>=0}))fuzzy=true;return {ids:top?[top.id]:[],fuzzy:fuzzy}}
 function findHot(text,sc){return matchHot(text,sc).ids}
 function localJudge(text,sc,speed,vol){
   var n=norm(text),len=Array.from(text).length;
@@ -1905,7 +1905,7 @@ async function buildClips(){
     var buf=await ac.decodeAudioData(await mrecBlob.arrayBuffer());
     var clips=[];
     state.best.forEach(function(b){
-      var t0=b.t0?Math.max(0,(b.t0-mrecT0)/1000-0.6):0;
+      var t0=b.t0?Math.max(0,(b.t0-mrecT0)/1000-1.0):0;
       var t1=b.t1?Math.min(buf.duration,(b.t1-mrecT0)/1000+0.4):buf.duration;
       if(t1-t0<0.3)return;
       var s0=Math.floor(t0*buf.sampleRate),s1=Math.min(buf.length,Math.ceil(t1*buf.sampleRate));
@@ -1972,7 +1972,9 @@ async function makeShareVideo(b,blob){
     if(scImg){
       var iw=scImg.naturalWidth||scImg.width,ih=scImg.naturalHeight||scImg.height;
       var s=Math.max(W/iw,ph/ih),dw=iw*s,dh=ih*s;
+      ctx.save();ctx.beginPath();ctx.rect(0,0,W,ph);ctx.clip();
       ctx.drawImage(scImg,(W-dw)/2,(ph-dh)/2,dw,dh);
+      ctx.restore();
       var g=ctx.createLinearGradient(0,ph-90,0,ph+20);
       g.addColorStop(0,'rgba(13,15,31,0)');g.addColorStop(1,'#0d0f1f');
       ctx.fillStyle=g;ctx.fillRect(0,ph-90,W,110);
@@ -2010,7 +2012,7 @@ async function makeShareVideo(b,blob){
     mr.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data)};
     var stopped=new Promise(function(res){mr.onstop=res});
     mr.start(250);
-    await new Promise(function(res){setTimeout(res,300)});
+    await new Promise(function(res){setTimeout(res,500)});
     srcN.start();
     var durMs=Math.max(1000,Math.ceil(ab.duration*1000)+400);
     await new Promise(function(res){setTimeout(res,durMs)});
