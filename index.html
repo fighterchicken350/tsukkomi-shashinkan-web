@@ -226,7 +226,7 @@ details.card summary{cursor:pointer;font-weight:700}
 <section id="v-title">
   <div class="float-words" aria-hidden="true"><i style="left:2%;top:78%;font-size:26px;animation-delay:-2s">なんでやねん！</i><i style="left:62%;top:88%;font-size:20px;animation-delay:-7s">アヒルか！</i><i style="left:30%;top:95%;font-size:32px;animation-delay:-11s">ドーン！</i><i style="left:80%;top:70%;font-size:24px;animation-delay:-4s">何してんねん！</i><i style="left:45%;top:82%;font-size:18px;animation-delay:-13s">それがし…</i></div>
   <div class="hero" id="hero"><img class="hero-logo" src="logo-1.png" alt="ツッコミ写真館"></div>
-  <p class="lead">写真に隠れたボケを見つけて、声でツッコめ。<br>全5枚、1枚60秒。</p>
+  <p class="lead">写真に隠れたボケを見つけて、声でツッコめ。<br>全3枚、1枚60秒。</p>
   <ol class="steps">
     <li><b>しゃべる</b><span>写真を見て、ツッコミを声に出す</span></li>
     <li><b>書き込まれる</b><span>言葉がその場で手書きになって写真に現れる</span></li>
@@ -1480,7 +1480,7 @@ SCENES.filter(function(x){return x.id==='shopping'})[0].img='data:image/jpeg;bas
 var GRAIN='<defs><filter id="gr" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="3"/><feColorMatrix type="matrix" values="0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 1 0 0 0 -.35"/></filter></defs><rect width="800" height="600" filter="url(#gr)" opacity=".6"/>';
 
 /* ---------- 状態 ---------- */
-var ROUNDS=5,SEC=60;
+var ROUNDS=3,SEC=60;
 var dict=null,micS='idle';
 var state={phase:'title',round:0,total:0,combo:0,maxCombo:0,pool:[],scene:null,hit:new Set(),used:new Set(),best:[],pending:0,buf:'',partial:'',liveStr:'',t0:0,tmr:0,roundPts:0,allBonus:false,user:[],lastSec:99,bufT:0,tFirst:0,tLast:0};
 var els={};['mic','micLabel','micNote','volWrap','volBar','typed','form','live','fx','marks','banner','frame','photo','sceneBox','dots','capL','hRound','hScore','hCombo','bar','barWrap','log','between','bEye','bTitle','bMiss','next','ctl','titleNote','muteToggle','bgmToggle','start','bestLine','rTotal','rRank','rNote','rTop','rBadge','rRec','rRecNote','again','scoreCard','wrows','wreset','kbBtn'].forEach(function(id){els[id]=document.getElementById(id)});
@@ -1799,7 +1799,7 @@ async function endRound(timeUp){
   els.between.hidden=false;
   
 }
-function rankOf(n){return n<800?'見習いツッコミ':n<1600?'町内会のツッコミ担当':n<2800?'深夜ラジオの常連':n<4500?'ゴールデン帯の司会者':'ツッコミ界の神'}
+function rankOf(n){return n<480?'見習いツッコミ':n<960?'町内会のツッコミ担当':n<1680?'深夜ラジオの常連':n<2700?'ゴールデン帯の司会者':'ツッコミ界の神'}
 async function showResult(){
   if(dict&&dict.active())dict.stop().catch(function(){});
   state.phase='result';showView('result');
