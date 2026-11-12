@@ -1595,6 +1595,13 @@ function buildWeights(){
 }
 var TS=['なんで','なんや','やねん','ちゃうやろ','ちゃう','おかしい','いやいや','いや','待て','まて','どこ','だれ','誰','おい','やろ','なんだ','どういう','ありえ','あかん','なにして','何して','なんなん','って','かよ','やん','じゃない','だろ','でしょ'].map(norm);
 var KAN=['なんでやねん','やねん','ちゃうやろ','ちゃう','あかん','ほんま','めっちゃ','せやな','せや','やで','やんけ','やん','でんがな','ええ','アホ','なんぼ','おおきに','いてまうぞ','どついたろか','なんやねん','なんや','しばくぞ','ちゃいます','ほな','ボケ'].map(norm);
+var PROVERB=['猿も木から落ちる','石の上にも三年','七転び八起き','塵も積もれば山となる','急がば回れ','笑う門には福来る','鬼に金棒','猫に小判','豚に真珠','焼け石に水','井の中の蛙','虎の威を借る狐','五十歩百歩','十人十色','千里の道も一歩から','転ばぬ先の杖','備えあれば憂いなし','花より団子','覆水盆に返らず','時は金なり','光陰矢の如し','一石二鳥','二兎を追う者は一兎をも得ず','三人寄れば文殊の知恵','案ずるより産むが易し','失敗は成功のもと','継続は力なり','雨降って地固まる','棚からぼたもち','火に油を注ぐ','身から出た錆','自業自得','一期一会','温故知新','四面楚歌','危機一髪','九死に一生','起死回生','一念発起','笑う門には福来たる'].map(norm);
+var PROPER=['ドラえもん','ピカチュウ','サザエさん','ちびまる子','ルフィ','孫悟空','ミッキー','キティ','スヌーピー','アンパンマン','コナン','クレヨンしんちゃん','のび太','ジャイアン','ウルトラマン','仮面ライダー','ゴジラ','ガンダム','トトロ','千と千尋','明石家さんま','松本人志','浜田雅功','ビートたけし','タモリ','所ジョージ','笑福亭鶴瓶','木村拓哉','大谷翔平','イチロー','羽生結弦','鬼滅の刃','ワンピース','ドラゴンボール','進撃の巨人','呪術廻戦','スパイファミリー','ポケモン','マリオ','ゼルダ','カービィ','ドラクエ','スターウォーズ','ハリーポッター','ディズニー','織田信長','豊臣秀吉','徳川家康','坂本龍馬','西郷隆盛','源義経','武田信玄','上杉謙信','伊達政宗','明智光秀','真田幸村','宮本武蔵','紫式部','清少納言','松尾芭蕉','夏目漱石','福沢諭吉','聖徳太子','中居正広','草彅剛','香取慎吾','嵐','櫻井翔','松本潤','福山雅治','星野源','菅田将暉','綾瀬はるか','石原さとみ','新垣結衣','米津玄師','あいみょん','藤井風','ナポレオン','アインシュタイン','エジソン','ダ・ヴィンチ','モーツァルト','ベートーヴェン','シェイクスピア','ゴッホ','ピカソ','孔子','釈迦'].map(norm);
+var D_HAKATA=['とよ','やけん','っちゃ','ばってん','しとる'].map(norm);
+var D_NAGOYA=['だがや','みゃあ','だぎゃあ','でら','だがね'].map(norm);
+var D_HIROSHIMA=['じゃけん','じゃろ','じゃけえ'].map(norm);
+var D_TOHOKU=['だべ','だっちゃ','だべさ'].map(norm);
+var D_OKINAWA=['めんそーれ','なんくるないさ','ちゅら','ゆいまーる'].map(norm);
 var DEV={ 'が':'か','ぎ':'き','ぐ':'く','げ':'け','ご':'こ','ざ':'さ','じ':'し','ず':'す','ぜ':'せ','ぞ':'そ','だ':'た','ぢ':'ち','づ':'つ','で':'て','ど':'と','ば':'は','び':'ひ','ぶ':'ふ','べ':'へ','ぼ':'ほ','ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ' };
 /* 濁点・半濁点と長音を無視した「音の形」にそろえる。アヒル→浴びる（あひる/あびる）のような聞き取りミスを同じ言葉として扱うための補正。 */
 function devoice(s){return (s||'').split('').map(function(c){return DEV[c]||c}).join('').replace(/[ーっ]/g,'')}
@@ -1603,7 +1610,7 @@ function editDist(a,b){var m=a.length,n=b.length;if(Math.abs(m-n)>1)return 2;var
 function nearMatch(hay,needle){if(needle.length<3)return false;for(var i=0;i<=hay.length-needle.length;i++){if(editDist(hay.substr(i,needle.length),needle)<=1)return true}if(hay.length>needle.length){for(i=0;i<=hay.length-needle.length+1;i++){if(editDist(hay.substr(i,needle.length-1),needle)<=1||editDist(hay.substr(i,needle.length+1),needle)<=1)return true}}return false}
 function matchHot(text,sc){var n=norm(text),dn=devoice(n),list=[];sc.hot.forEach(function(h){var cnt=0,maxLen=0,exact=false,seen={};h.k.forEach(function(k){if(!k)return;var kk=devoice(norm(k));if(!kk||seen[kk])return;seen[kk]=1;if(dn.indexOf(kk)>=0){cnt++;if(kk.length>maxLen)maxLen=kk.length;exact=true}else if(nearMatch(dn,kk)){cnt++;if(kk.length>maxLen)maxLen=kk.length}});if(cnt>0)list.push({id:h.id,cnt:cnt,maxLen:maxLen,exact:exact,h:h})});list.sort(function(a,b){if(a.exact!==b.exact)return a.exact?-1:1;if(a.cnt!==b.cnt)return b.cnt-a.cnt;if(a.maxLen!==b.maxLen)return b.maxLen-a.maxLen;return 0});var top=list[0];var fuzzy=false;if(top&&!top.h.k.some(function(k){return k&&n.indexOf(norm(k))>=0}))fuzzy=true;return {ids:top?[top.id]:[],fuzzy:fuzzy}}
 function findHot(text,sc){return matchHot(text,sc).ids}
-function localJudge(text,sc,speed,vol){
+function localJudge(text,sc,speed,vol,fast){
   var n=norm(text),len=Array.from(text).length;
   var ts=Math.min(3,TS.filter(function(w){return n.indexOf(w)>=0}).length);
   var gen=Math.min(1,ts*.25+(len>=5&&len<=30?.15:0));
@@ -1664,6 +1671,20 @@ function localJudge(text,sc,speed,vol){
     if(/[a-zA-Z]{2,}/.test(text))badges.push({id:'eng',name:'英語',pts:10});
     if(/ドーン|バーン|ドカーン|ガーン|ガシャーン|ドスン|バタン|パリーン|キラーン|ズシン|ズコー|ズコッ|ババーン|ドドーン|ギャー|ヒャー|ウオー|バリバリ|ドキドキ|ワクワク|モフモフ|フワフワ|ぷにぷに/.test(text)||/どーん|ばーん|どかーん|がーん|がしゃーん|どすん|ばたん|ぱりーん|きらーん|ずしん|ずこー|ずこっ|ばばーん|どどーん|ぎゃー|ひゃー|うおー|ばりばり|どきどき|わくわく|もふもふ|ふわふわ|ぷにぷに/.test(n))badges.push({id:'ono',name:'オノマトペ',pts:10});
     if(/[0-9０-９]|[一二三四五六七八九十百千万]/.test(text))badges.push({id:'num',name:'数字',pts:10});
+    if(/(俺|おれ|私|わたし|僕|ぼく|わし|あたし)(は|が)/.test(n))badges.push({id:'pers',name:'擬人化',pts:20});
+    if(fast)badges.push({id:'fast',name:'早さ',pts:20});
+    if(PROVERB.some(function(p){return p&&n.indexOf(p)>=0}))badges.push({id:'prov',name:'ことわざ',pts:15});
+    if(PROPER.some(function(p){return p&&n.indexOf(p)>=0}))badges.push({id:'prop',name:'固有名詞',pts:15});
+    var rhyCnt={};chunks.forEach(function(c){var e=c.slice(-1);if(/[あ-んア-ン]/.test(e))rhyCnt[e]=(rhyCnt[e]||0)+1});
+    var maxRhy=Math.max.apply(null,Object.keys(rhyCnt).map(function(k){return rhyCnt[k]}).concat([0]));
+    if(chunks.length>=3&&maxRhy>=3)badges.push({id:'rhy',name:'韻',pts:20});
+    var techHit=n.indexOf('くせ')>=0||n.indexOf('癖')>=0||/い[ー～]+や/.test(text)||n.indexOf('何言ってるか')>=0||n.indexOf('時を戻そう')>=0||n.indexOf('欧米か')>=0||n.indexOf('高低差')>=0||n.indexOf('耳きん')>=0||n.indexOf('温度差')>=0||n.indexOf('風邪ひく')>=0||n.indexOf('野党')>=0||n.indexOf('なんでそうなる')>=0||n.indexOf('四捨五入したら')>=0||n.indexOf('お前が言うな')>=0||n.indexOf('あんたが言うな')>=0||n.indexOf('できねぇよ')>=0||n.indexOf('できねえよ')>=0||n.indexOf('ただぁ')>=0||n.indexOf('もういいぜ')>=0||n.indexOf('みるふぃゆか')>=0||n.indexOf('らいす定食か')>=0||n.indexOf('えいりあん2か')>=0;
+    if(techHit)badges.push({id:'tech',name:'テクニカルボーナス',pts:20});
+    if(D_HAKATA.some(function(p){return p&&n.indexOf(p)>=0}))badges.push({id:'hak',name:'博多弁',pts:15});
+    if(D_NAGOYA.some(function(p){return p&&n.indexOf(p)>=0}))badges.push({id:'nag',name:'名古屋弁',pts:15});
+    if(D_HIROSHIMA.some(function(p){return p&&n.indexOf(p)>=0}))badges.push({id:'hir',name:'広島弁',pts:15});
+    if(D_TOHOKU.some(function(p){return p&&n.indexOf(p)>=0}))badges.push({id:'toh',name:'東北弁',pts:15});
+    if(D_OKINAWA.some(function(p){return p&&n.indexOf(p)>=0}))badges.push({id:'oki',name:'沖縄弁',pts:15});
   }
   return {f:{acc:gen,hum:hm,shp:sh,eng:en,kan:kn,ana:ana,kil:kil},hits:mh.ids,fuzzy:mh.fuzzy,shout:shout,vol:vol||0,badges:badges,comment:null,ai:false};
 }
@@ -1709,7 +1730,8 @@ async function commit(text,speed,w0,w1){
   try{
     var sc=state.scene;
     var vol=w0?volPeak(w0,w1||performance.now()):0;
-    var resP=Promise.resolve(localJudge(text,sc,speed,vol));
+    var fast=!!(w0&&state.t0&&(w0-state.t0)<=5000);
+    var resP=Promise.resolve(localJudge(text,sc,speed,vol,fast));
     await launch(text,resP,sc,w0,w1);
   }catch(e){console.error(e)}finally{state.pending--}
 }
@@ -2153,7 +2175,7 @@ function srStart(){
       srFinal=f;srInterim=i2;state.buf=f;state.partial=i2;
       if(!srSpoke){srSpoke=true;srT0=performance.now()}
       srLast=performance.now();renderLive();
-      clearTimeout(srTimer);srTimer=setTimeout(function(){srStop(my)},1000);
+      clearTimeout(srTimer);srTimer=setTimeout(function(){srStop(my)},2000);
     };
     my.onerror=function(e){if(rec!==my)return;srErr(e&&e.error)};
     my.onend=function(){if(rec!==my)return;srActive=false;clearTimeout(srTimer);clearTimeout(srForce);updateMic('idle');srFinish()};
@@ -2210,8 +2232,8 @@ note('音声入力を確認中…');
   }catch(e){}
   els.start.disabled=false;els.start.textContent='スタート';
   if(dict){
-    dict.onPartial(function(e){if(state.phase!=='play')return;if(e.text&&!state.tFirst)state.tFirst=performance.now();state.partial=e.text||'';if(e.text){state.tLast=performance.now();clearTimeout(state.bufT);state.bufT=setTimeout(flushBuf,1000)}renderLive()});
-    dict.onFinal(function(e){if(state.phase!=='play')return;state.tLast=performance.now();state.buf+=e.text||'';state.partial='';renderLive();clearTimeout(state.bufT);state.bufT=setTimeout(flushBuf,1000)});
+    dict.onPartial(function(e){if(state.phase!=='play')return;if(e.text&&!state.tFirst)state.tFirst=performance.now();state.partial=e.text||'';if(e.text){state.tLast=performance.now();clearTimeout(state.bufT);state.bufT=setTimeout(flushBuf,2000)}renderLive()});
+    dict.onFinal(function(e){if(state.phase!=='play')return;state.tLast=performance.now();state.buf+=e.text||'';state.partial='';renderLive();clearTimeout(state.bufT);state.bufT=setTimeout(flushBuf,2000)});
     dict.onState(function(e){updateMic(e.state,e.reason)});
     note('スタートを押すとマイクの許可を聞かれます。声でツッコんでね。');
   }else if(SR){
