@@ -1601,7 +1601,7 @@ function devoice(s){return (s||'').split('').map(function(c){return DEV[c]||c}).
 function editDist(a,b){var m=a.length,n=b.length;if(Math.abs(m-n)>1)return 2;var d=[];for(var i=0;i<=m;i++){d[i]=[i]}for(var j=0;j<=n;j++)d[0][j]=j;for(i=1;i<=m;i++){for(j=1;j<=n;j++){d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1))}}return d[m][n]}
 /* 3文字以上のキーワードなら、1文字だけ違う聞き取りミスも許容して探す */
 function nearMatch(hay,needle){if(needle.length<3)return false;for(var i=0;i<=hay.length-needle.length;i++){if(editDist(hay.substr(i,needle.length),needle)<=1)return true}if(hay.length>needle.length){for(i=0;i<=hay.length-needle.length+1;i++){if(editDist(hay.substr(i,needle.length-1),needle)<=1||editDist(hay.substr(i,needle.length+1),needle)<=1)return true}}return false}
-function matchHot(text,sc){var n=norm(text),dn=devoice(n),ids=[],fuzzy=false;sc.hot.forEach(function(h){var hit=h.k.some(function(k){return k&&dn.indexOf(devoice(norm(k)))>=0});if(!hit)hit=h.k.some(function(k){return k&&nearMatch(dn,devoice(norm(k)))});if(hit){ids.push(h.id);if(!h.k.some(function(k){return k&&n.indexOf(norm(k))>=0}))fuzzy=true}});return {ids:ids,fuzzy:fuzzy}}
+function matchHot(text,sc){var n=norm(text),dn=devoice(n),list=[],fuzzy=false;sc.hot.forEach(function(h){var cnt=0,maxLen=0,exact=false,seen={};h.k.forEach(function(k){if(!k)return;var kk=devoice(norm(k));if(!kk||seen[kk])return;seen[kk]=1;if(dn.indexOf(kk)>=0){cnt++;if(kk.length>maxLen)maxLen=kk.length;exact=true}else if(nearMatch(dn,kk)){cnt++;if(kk.length>maxLen)maxLen=kk.length}});if(cnt>0){list.push({id:h.id,cnt:cnt,maxLen:maxLen,exact:exact});if(!h.k.some(function(k){return k&&n.indexOf(norm(k))>=0}))fuzzy=true}});list.sort(function(a,b){if(a.exact!==b.exact)return a.exact?-1:1;if(a.cnt!==b.cnt)return b.cnt-a.cnt;if(a.maxLen!==b.maxLen)return b.maxLen-a.maxLen;return 0});return {ids:list.map(function(x){return x.id}),fuzzy:fuzzy}}
 function findHot(text,sc){return matchHot(text,sc).ids}
 function localJudge(text,sc,speed,vol){
   var n=norm(text),len=Array.from(text).length;
@@ -1731,8 +1731,8 @@ async function launch(text,resP,sc,w0,w1){
   showScoreCard(r);
   state.total+=r.pts;state.roundPts+=r.pts;updateHUD(true);
   var t1=w1||performance.now(),t0=w0||(t1-4000);
-  state.best.push({text:text,pts:r.pts,comment:r.comment+(r.fuzzy?'（聞き取りを補正したよ）':''),badges:r.badges||[],t0:t0,t1:t1});
-  var tgtH=sc.hot.find(function(h){return r.fresh.indexOf(h.id)>=0})||sc.hot.find(function(h){return r.hits.indexOf(h.id)>=0});
+  state.best.push({text:text,pts:r.pts,comment:r.comment+(r.fuzzy?'（聞き取りを補正したよ）':''),badges:r.badges||[],t0:t0,t1:t1,scene:sc?sc.id:null});
+  var tgtId=r.fresh[0]||r.hits[0];var tgtH=tgtId?sc.hot.find(function(h){return h.id===tgtId}):null;
   var isHit=!!tgtH||(!!sc.img&&!sc.hot.length&&r.base>=30);
   var T=isHit?{x:tgtH?tgtH.x*k:rnd(W*.25,W*.75),y:tgtH?tgtH.y*k:rnd(Hh*.2,Hh*.5)}:{x:Math.random()>.5?W*1.25:-W*.25,y:-Hh*.3};
   var C={x:(ox+T.x)/2+rnd(-.2,.2)*W,y:Math.min(oy,T.y)-Hh*.4};
@@ -1915,7 +1915,113 @@ async function buildClips(){
     return clips;
   }catch(e){return []}
 }
-function shareClip(b,blob){
+function pickVideoMime(){
+  if(!window.MediaRecorder||!MediaRecorder.isTypeSupported)return '';
+  var cands=['video/mp4;codecs="avc1.42E01E,mp4a.40.2"','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  for(var i=0;i<cands.length;i++){try{if(MediaRecorder.isTypeSupported(cands[i]))return cands[i]}catch(e){}}
+  return '';
+}
+function wrapLines(ctx,text,maxW){
+  var lines=[],cur='';
+  for(var i=0;i<text.length;i++){
+    var t=cur+text[i];
+    if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=text[i]}else{cur=t}
+  }
+  if(cur)lines.push(cur);
+  return lines;
+}
+function loadImg(src){
+  return new Promise(function(res){
+    var im=new Image();
+    im.onload=function(){res(im)};
+    im.onerror=function(){res(null)};
+    im.src=src;
+  });
+}
+async function makeShareVideo(b,blob){
+  try{
+    var cv=document.createElement('canvas');
+    if(!cv.captureStream||!window.MediaRecorder)return null;
+    var mime=pickVideoMime();
+    if(!mime)return null;
+    var AC=window.AudioContext||window.webkitAudioContext;
+    var actx=ac;
+    if(!actx||actx.state!=='running'){
+      if(actx&&actx.resume){try{await actx.resume()}catch(e){}}
+      if(!actx||actx.state!=='running'){
+        if(!AC)return null;
+        actx=new AC();
+        try{await actx.resume()}catch(e){}
+        if(actx.state!=='running')return null;
+      }
+    }
+    var ab=await actx.decodeAudioData(await blob.arrayBuffer());
+    var W=720,H=720;
+    cv.width=W;cv.height=H;
+    var ctx=cv.getContext('2d');
+    var scImg=null;
+    if(b.scene){
+      var sc=null;
+      for(var i=0;i<SCENES.length;i++){if(SCENES[i].id===b.scene){sc=SCENES[i];break}}
+      if(sc&&sc.img)scImg=await loadImg(sc.img);
+    }
+    ctx.fillStyle='#0d0f1f';ctx.fillRect(0,0,W,H);
+    var ph=Math.round(H*0.5);
+    if(scImg){
+      var iw=scImg.naturalWidth||scImg.width,ih=scImg.naturalHeight||scImg.height;
+      var s=Math.max(W/iw,ph/ih),dw=iw*s,dh=ih*s;
+      ctx.drawImage(scImg,(W-dw)/2,(ph-dh)/2,dw,dh);
+      var g=ctx.createLinearGradient(0,ph-90,0,ph+20);
+      g.addColorStop(0,'rgba(13,15,31,0)');g.addColorStop(1,'#0d0f1f');
+      ctx.fillStyle=g;ctx.fillRect(0,ph-90,W,110);
+    }
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.font='700 24px "Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif';
+    var label='ツッコミ写真館';
+    var lw=ctx.measureText(label).width+36;
+    ctx.fillStyle='rgba(13,15,31,0.65)';ctx.fillRect((W-lw)/2,16,lw,38);
+    ctx.fillStyle='#fff';ctx.fillText(label,W/2,36);
+    var fs=48,lines=[];
+    while(fs>=30){
+      ctx.font='700 '+fs+'px "Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif';
+      lines=wrapLines(ctx,b.text,W-72);
+      if(lines.length<=3)break;
+      fs-=6;
+    }
+    if(lines.length>3){lines=lines.slice(0,3);lines[2]=lines[2].slice(0,-1)+'…'}
+    var lh=fs+12,cy=500;
+    ctx.lineJoin='round';ctx.miterLimit=2;
+    lines.forEach(function(ln,i){
+      var y=cy-(lines.length-1)*lh/2+i*lh;
+      ctx.strokeStyle='#14163a';ctx.lineWidth=10;ctx.strokeText(ln,W/2,y);
+      ctx.fillStyle='#fff';ctx.fillText(ln,W/2,y);
+    });
+    ctx.font='64px "Dela Gothic One","Hiragino Sans",sans-serif';
+    ctx.strokeStyle='#14163a';ctx.lineWidth=8;ctx.strokeText('+'+b.pts+'点',W/2,H-80);
+    ctx.fillStyle='#ffe14a';ctx.fillText('+'+b.pts+'点',W/2,H-80);
+    var dest=actx.createMediaStreamDestination();
+    var srcN=actx.createBufferSource();srcN.buffer=ab;srcN.connect(dest);
+    var vs=cv.captureStream(30);
+    var stream=new MediaStream(vs.getVideoTracks().concat(dest.stream.getAudioTracks()));
+    var mr=new MediaRecorder(stream,{mimeType:mime});
+    var chunks=[];
+    mr.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data)};
+    var stopped=new Promise(function(res){mr.onstop=res});
+    mr.start(250);
+    await new Promise(function(res){setTimeout(res,300)});
+    srcN.start();
+    var durMs=Math.max(1000,Math.ceil(ab.duration*1000)+400);
+    await new Promise(function(res){setTimeout(res,durMs)});
+    try{mr.stop()}catch(e){}
+    await stopped;
+    try{srcN.stop()}catch(e){}
+    var type=mr.mimeType||mime;
+    return new Blob(chunks,{type:type});
+  }catch(e){
+    return null;
+  }
+}
+function shareClipAudio(b,blob){
   var file=new File([blob],'tsukkomi-'+b.pts+'点.wav',{type:'audio/wav'});
   var text='ツッコミ写真館で'+b.pts+'点！「'+b.text+'」';
   if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
@@ -1925,6 +2031,27 @@ function shareClip(b,blob){
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).catch(function(){});
     els.rRecNote.textContent='共有が使えないので音声をダウンロードしました。テキストをコピーしました。';
   }
+}
+function shareReadyClip(cp){
+  if(cp.sharing)return;
+  cp.sharing=true;
+  var b=cp.b,text='ツッコミ写真館で'+b.pts+'点！「'+b.text+'」';
+  function done(){cp.sharing=false}
+  if(cp.video){
+    var ext=cp.video.type.indexOf('mp4')>=0?'mp4':'webm';
+    var file=new File([cp.video],'tsukkomi-'+b.pts+'点.'+ext,{type:cp.video.type});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      var p=navigator.share({files:[file],title:'ツッコミ写真館',text:text});
+      if(p&&p.then)p.then(done,done);else done();
+      return;
+    }
+    var a=document.createElement('a');a.href=URL.createObjectURL(cp.video);a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).catch(function(){});
+    els.rRecNote.textContent='動画をダウンロードしました。テキストをコピーしました。';
+    done();return;
+  }
+  shareClipAudio(b,cp.blob);
+  done();
 }
 function renderRecList(clips){
   mrecUrls.forEach(function(u){try{URL.revokeObjectURL(u)}catch(e){}});mrecUrls=[];
@@ -1946,8 +2073,9 @@ function renderRecList(clips){
     var au=document.createElement('audio');au.controls=true;au.preload='none';
     var url=URL.createObjectURL(cp.blob);mrecUrls.push(url);au.src=url;li.appendChild(au);
     var btns=document.createElement('div');btns.className='rec-btns';
-    var sh=document.createElement('button');sh.className='btn alt';sh.type='button';sh.textContent='共有する';
-    sh.addEventListener('click',function(){shareClip(cp.b,cp.blob)});
+    var sh=document.createElement('button');sh.className='btn alt';sh.type='button';sh.textContent='動画準備中…';sh.disabled=true;
+    sh.addEventListener('click',function(){shareReadyClip(cp)});
+    makeShareVideo(cp.b,cp.blob).then(function(v){cp.video=v||null;sh.disabled=false;sh.textContent='共有する'}).catch(function(){cp.video=null;sh.disabled=false;sh.textContent='共有する'});
     var dl=document.createElement('a');dl.className='btn alt';dl.textContent='保存する';dl.href=url;dl.download='tsukkomi-'+cp.b.pts+'点.wav';
     btns.appendChild(sh);btns.appendChild(dl);li.appendChild(btns);
     els.rRec.appendChild(li);
