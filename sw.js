@@ -2,7 +2,7 @@
    ゲームのシェル（HTML・ロゴ・アイコン）だけをキャッシュする。
    写真は index.html に base64 で埋め込まれているので、シェルを
    キャッシュすればオフラインでも遊べる。 */
-var CACHE = 'tsukkomi-v2';
+var CACHE = 'tsukkomi-v3';
 var SHELL = [
   './',
   'index.html',

@@ -1482,7 +1482,7 @@ var GRAIN='<defs><filter id="gr" x="0" y="0" width="100%" height="100%"><feTurbu
 /* ---------- 状態 ---------- */
 var ROUNDS=3,SEC=60;
 var dict=null,micS='idle';
-var state={phase:'title',round:0,total:0,combo:0,maxCombo:0,pool:[],scene:null,hit:new Set(),used:new Set(),best:[],pending:0,buf:'',partial:'',liveStr:'',t0:0,tmr:0,roundPts:0,allBonus:false,user:[],lastSec:99,bufT:0,tFirst:0,tLast:0};
+var state={phase:'title',round:0,total:0,combo:0,maxCombo:0,pool:[],scene:null,hit:new Set(),hitMain:new Set(),used:new Set(),best:[],pending:0,buf:'',partial:'',liveStr:'',t0:0,tmr:0,roundPts:0,allBonus:false,user:[],lastSec:99,bufT:0,tFirst:0,tLast:0};
 var els={};['mic','micLabel','micNote','volWrap','volBar','typed','form','live','fx','marks','banner','frame','photo','sceneBox','dots','capL','hRound','hScore','hCombo','bar','barWrap','log','between','bEye','bTitle','bMiss','next','ctl','titleNote','muteToggle','bgmToggle','start','bestLine','rTotal','rRank','rNote','rTop','rBadge','rRec','rRecNote','again','scoreCard','wrows','wreset','kbBtn'].forEach(function(id){els[id]=document.getElementById(id)});
 
 /* ---------- 効果音 ---------- */
@@ -1750,7 +1750,8 @@ async function launch(text,resP,sc,w0,w1){
   li.querySelector('.c').textContent=r.comment+' ｜ '+KEYS.map(function(q){return FNAME[q]+r.parts[q]}).join(' ')+(r.bonus?' ｜ コンボ+'+r.bonus:'')+((r.anaBonus||r.kilBonus)?' ｜ ボーナス '+(r.anaBonus?'例え+'+r.anaBonus+' ':'')+(r.kilBonus?'キラー+'+r.kilBonus:''):'' );
   els.log.insertBefore(li,els.log.firstChild);
   updateHUD();
-  if(sc.hot.length&&state.hit.size===sc.hot.length&&!state.allBonus&&state.phase==='play'){
+  if(tgtH)state.hitMain.add(tgtH.id);
+  if(sc.hot.length&&state.hitMain.size===sc.hot.length&&!state.allBonus&&state.phase==='play'){
     state.allBonus=true;state.total+=50;state.roundPts+=50;updateHUD(true);banner('全ボケ制覇！+50');setTimeout(function(){endRound(false)},1100);
   }
 }
@@ -1762,7 +1763,7 @@ function renderScene(sc){
 }
 function nextRound(){
   state.round++;var sc=state.pool[state.round-1];
-  state.scene=sc;state.hit=new Set();state.roundPts=0;state.allBonus=false;state.buf='';state.partial='';state.lastSec=99;
+  state.scene=sc;state.hit=new Set();state.hitMain=new Set();state.roundPts=0;state.allBonus=false;state.buf='';state.partial='';state.lastSec=99;
   renderScene(sc);els.typed.value='';setLive('');
   els.between.hidden=true;els.ctl.hidden=false;els.barWrap.classList.remove('low');els.log.innerHTML='';
   updateHUD();
@@ -1801,6 +1802,7 @@ async function endRound(timeUp){
 }
 function rankOf(n){return n<480?'見習いツッコミ':n<960?'町内会のツッコミ担当':n<1680?'深夜ラジオの常連':n<2700?'ゴールデン帯の司会者':'ツッコミ界の神'}
 async function showResult(){
+  try{if(!ac&&(window.AudioContext||window.webkitAudioContext))ac=new (window.AudioContext||window.webkitAudioContext)();if(ac&&ac.state==='suspended'&&ac.resume)await ac.resume()}catch(e){}
   if(dict&&dict.active())dict.stop().catch(function(){});
   state.phase='result';showView('result');
   els.rTotal.textContent=state.total;els.rRank.textContent=rankOf(state.total);
