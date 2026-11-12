@@ -188,6 +188,10 @@ button{cursor:pointer}
 .rec-head{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .rec-head b{font-weight:700;word-break:break-all}
 .rec-head span{font-family:var(--f-disp);color:var(--yellow);white-space:nowrap}
+.rec-right{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.rec-head .rec-badge{display:inline-flex;align-items:center;gap:2px;font-family:var(--f-body);font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;line-height:1.5}
+.rec-head .rec-badge.best{background:linear-gradient(180deg,#ffe066,#ffb400);color:#4a2c00}
+.rec-head .rec-badge.nice{background:#3b5bff;color:#fff}
 .rec-btns{display:flex;gap:8px;align-items:center}
 .rec-btns .btn{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;padding:8px 12px;font-size:14px;white-space:nowrap;text-align:center;text-decoration:none}
 details.card summary{cursor:pointer;font-weight:700}
@@ -1932,8 +1936,13 @@ function renderRecList(clips){
     var li=document.createElement('li');li.className='rec-row';
     var head=document.createElement('div');head.className='rec-head';
     var t=document.createElement('b');t.textContent=cp.b.text;
+    var right=document.createElement('span');right.className='rec-right';
+    var bd=null;
+    if(cp.b.pts>=400){bd=document.createElement('span');bd.className='rec-badge best';bd.textContent='👑 ベストツッコミ'}
+    else if(cp.b.pts>=300){bd=document.createElement('span');bd.className='rec-badge nice';bd.textContent='👍 ナイスツッコミ'}
+    if(bd)right.appendChild(bd);
     var p=document.createElement('span');p.textContent='+'+cp.b.pts+'点';
-    head.appendChild(t);head.appendChild(p);li.appendChild(head);
+    right.appendChild(p);head.appendChild(t);head.appendChild(right);li.appendChild(head);
     var au=document.createElement('audio');au.controls=true;au.preload='none';
     var url=URL.createObjectURL(cp.blob);mrecUrls.push(url);au.src=url;li.appendChild(au);
     var btns=document.createElement('div');btns.className='rec-btns';
