@@ -1823,7 +1823,7 @@ async function endRound(timeUp){
   els.between.hidden=false;
   
 }
-function rankOf(n){return n<480?'学生お笑い':n<960?'養成所あがり':n<1680?'深夜ラジオの常連':n<2000?'ゴールデン帯のレギュラー':n<2100?'看板芸人':n<2200?'賞レース王者':n<2300?'国民的スター芸人':n<2400?'お笑いBIG3級':n<2500?'殿堂入りレジェンド':n<2600?'神に呼ばれた芸人':n<2700?'あと一歩で神':'ツッコミ界の神'}
+function rankOf(n){return n<480?'学生お笑い':n<960?'養成所あがり':n<1680?'深夜ラジオの常連':n<2000?'ゴールデン帯のレギュラー':n<2100?'看板芸人':n<2200?'賞レース王者':n<2300?'国民的スター芸人':n<2400?'お笑いBIG3級':n<2500?'殿堂入りレジェンド':n<2600?'神に呼ばれた芸人':n<2700?'あと一歩で神':n<2800?'ツッコミ界の神':n<2900?'神をもツッコむ芸人':n<3000?'神の独演会':n<3100?'天界の看板芸人':n<3200?'神々のツッコミ担当':n<3300?'宇宙レベルのツッコミ':n<3400?'銀河一のツッコミ':n<3500?'神話級の芸人':n<3600?'伝説のその先':n<3700?'もはや社会現象':n<3800?'人類の至宝':n<3900?'ツッコミの最終形態':n<4000?'神の領域の住人':n<4500?'笑いの創造主':n<5000?'ビッグバン級':'称号を超えた存在'}
 async function showResult(){
   try{if(!ac&&(window.AudioContext||window.webkitAudioContext))ac=new (window.AudioContext||window.webkitAudioContext)();if(ac&&ac.state==='suspended'&&ac.resume)await ac.resume()}catch(e){}
   if(dict&&dict.active())dict.stop().catch(function(){});
