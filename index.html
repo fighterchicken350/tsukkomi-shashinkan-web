@@ -1963,7 +1963,7 @@ function loadImg(src){
     im.src=src;
   });
 }
-async function makeShareVideo(b,blob){
+async function makeShareVideoOnce(b,blob){
   try{
     var cv=document.createElement('canvas');
     if(!cv.captureStream||!window.MediaRecorder)return null;
@@ -2028,12 +2028,15 @@ async function makeShareVideo(b,blob){
     ctx.fillStyle='#ffe14a';ctx.fillText('+'+b.pts+'点',W/2,H-80);
     var dest=actx.createMediaStreamDestination();
     var srcN=actx.createBufferSource();srcN.buffer=ab;srcN.connect(dest);
+    var kg=actx.createGain();kg.gain.value=0;srcN.connect(kg);kg.connect(actx.destination);
     var vs=cv.captureStream(30);
     var stream=new MediaStream(vs.getVideoTracks().concat(dest.stream.getAudioTracks()));
     var mr=new MediaRecorder(stream,{mimeType:mime});
     var chunks=[];
     mr.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data)};
+    var mrErr=false;mr.onerror=function(){mrErr=true};
     var stopped=new Promise(function(res){mr.onstop=res});
+    if(actx.state!=='running'){try{await actx.resume()}catch(e){}if(actx.state!=='running')return null}
     mr.start(250);
     await new Promise(function(res){setTimeout(res,500)});
     srcN.start();
@@ -2041,6 +2044,7 @@ async function makeShareVideo(b,blob){
     await new Promise(function(res){setTimeout(res,durMs)});
     try{mr.stop()}catch(e){}
     await stopped;
+    if(mrErr)return null;
     try{srcN.stop()}catch(e){}
     var type=mr.mimeType||mime;
     return new Blob(chunks,{type:type});
@@ -2048,6 +2052,14 @@ async function makeShareVideo(b,blob){
     return null;
   }
 }
+async function makeShareVideo(b,blob){
+  var v=await makeShareVideoOnce(b,blob);
+  if(v&&v.size>=8000)return v;
+  var v2=await makeShareVideoOnce(b,blob);
+  return (v2&&v2.size>=8000)?v2:(v2||v);
+}
+var _videoChain=Promise.resolve();
+function queueShareVideo(b,blob){var p=_videoChain.then(function(){return makeShareVideo(b,blob)});_videoChain=p.then(function(){},function(){});return p}
 function shareClipAudio(b,blob){
   var file=new File([blob],'tsukkomi-'+b.pts+'点.wav',{type:'audio/wav'});
   var text='ツッコミ写真館で'+b.pts+'点！「'+b.text+'」';
@@ -2063,7 +2075,7 @@ function saveClipVideo(cp,btn){
   if(!cp.video){
     if(cp.savingVideo)return;cp.savingVideo=true;
     if(btn){btn.disabled=true;btn.textContent='動画を作成中…'}
-    makeShareVideo(cp.b,cp.blob).then(function(v){cp.video=v||null;cp.savingVideo=false;if(btn){btn.disabled=false;btn.textContent='保存する'}if(v){els.rRecNote.textContent='動画の準備ができました。「保存する」をもう一度押すと、写真アプリに保存できます。'}else{els.rRecNote.textContent='動画を作れませんでした。'}}).catch(function(){cp.savingVideo=false;if(btn){btn.disabled=false;btn.textContent='保存する'}els.rRecNote.textContent='動画を作れませんでした。'});
+    queueShareVideo(cp.b,cp.blob).then(function(v){cp.video=v||null;cp.savingVideo=false;if(btn){btn.disabled=false;btn.textContent='保存する'}if(v){els.rRecNote.textContent='動画の準備ができました。「保存する」をもう一度押すと、写真アプリに保存できます。'}else{els.rRecNote.textContent='動画を作れませんでした。'}}).catch(function(){cp.savingVideo=false;if(btn){btn.disabled=false;btn.textContent='保存する'}els.rRecNote.textContent='動画を作れませんでした。'});
     return;
   }
   var ext=cp.video.type.indexOf('mp4')>=0?'mp4':'webm';
@@ -2119,7 +2131,7 @@ function renderRecList(clips){
     var btns=document.createElement('div');btns.className='rec-btns';
     var sh=document.createElement('button');sh.className='btn alt';sh.type='button';sh.textContent='動画準備中…';sh.disabled=true;
     sh.addEventListener('click',function(){shareReadyClip(cp)});
-    makeShareVideo(cp.b,cp.blob).then(function(v){cp.video=v||null;sh.disabled=false;sh.textContent='共有する'}).catch(function(){cp.video=null;sh.disabled=false;sh.textContent='共有する'});
+    queueShareVideo(cp.b,cp.blob).then(function(v){cp.video=v||null;sh.disabled=false;sh.textContent='共有する'}).catch(function(){cp.video=null;sh.disabled=false;sh.textContent='共有する'});
     var dl=document.createElement('button');dl.className='btn alt';dl.type='button';dl.textContent='保存する';
     dl.addEventListener('click',function(){saveClipVideo(cp,dl)});
     btns.appendChild(sh);btns.appendChild(dl);li.appendChild(btns);
