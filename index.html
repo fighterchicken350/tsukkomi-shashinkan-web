@@ -1823,7 +1823,7 @@ async function endRound(timeUp){
   els.between.hidden=false;
   
 }
-function rankOf(n){return n<480?'見習いツッコミ':n<960?'町内会のツッコミ担当':n<1680?'深夜ラジオの常連':n<2700?'ゴールデン帯の司会者':'ツッコミ界の神'}
+function rankOf(n){return n<480?'学生お笑い':n<960?'養成所あがり':n<1680?'深夜ラジオの常連':n<2000?'ゴールデン帯のレギュラー':n<2100?'看板芸人':n<2200?'賞レース王者':n<2300?'国民的スター芸人':n<2400?'お笑いBIG3級':n<2500?'殿堂入りレジェンド':n<2600?'神に呼ばれた芸人':n<2700?'あと一歩で神':'ツッコミ界の神'}
 async function showResult(){
   try{if(!ac&&(window.AudioContext||window.webkitAudioContext))ac=new (window.AudioContext||window.webkitAudioContext)();if(ac&&ac.state==='suspended'&&ac.resume)await ac.resume()}catch(e){}
   if(dict&&dict.active())dict.stop().catch(function(){});
